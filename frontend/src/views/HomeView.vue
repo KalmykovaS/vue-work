@@ -7,13 +7,18 @@
               <div class="desk__filters">
                   <div class="desk__user-filter">
                       <ul class="user-filter">
-                          <li class="user-filter__item">
+                          <li 
+                            v-for="user in users"
+                            :key="user.id"
+                            :title="user.name"
+                            class="user-filter__item"
+                          >
                               <a class="user-filter__button">
                                   <img
-                                          src=""
-                                          alt="Аватар юзера"
-                                          width="24"
-                                          height="24"
+                                    :src="getImage(user.avatar)"
+                                    alt="Аватар юзера"
+                                    width="24"
+                                    height="24"
                                   />
                               </a>
                           </li>
@@ -21,9 +26,15 @@
                   </div>
                   <div class="desk__meta-filter">
                       <ul class="meta-filter">
-                          <li class
-                          ="meta-filter__item">
-                          <a class="meta-filter__status"/>
+                          <li
+                            v-for="({ value, label }) in STATUSES"
+                            :key="value"
+                            class="meta-filter__item">
+                            <a 
+                                :class="`meta-filter__status meta-filter__status--color meta-filter__status--${value}`"
+                                :title="label"
+                                class="meta-filter__status">
+                            </a>
                           </li>
                       </ul>
                   </div>
@@ -31,49 +42,110 @@
           </div>
 
           <!--      Колонки и задачи-->
-          <div class="desk__columns">
-              <div class="column">
-                  <h2 class="column__name">Название колонки</h2>
+          <div 
+            v-if="columns.length"
+            class="desk__columns">
+              <div 
+                v-for="column in columns"
+                :key="column.id"
+                class="column"
+                >
+                  <h2 class="column__name">{{ column.title }}</h2>
                   <div class="column__target-area">
-                      <div class="column__task">
-                          <div class="task">
-                              <div class="task__user">
-                                  <div class="task__avatar">
-                                      <img
-                                              src=""
-                                              alt="задача"
-                                              width="20"
-                                              height="20"
-                                      />
-                                  </div>
-                                  Пользователь задачи
-                              </div>
-
-                              <div class="task__statuses">
-                                  <span class="task__status"/>
-                                  <span class="task__status"/>
-                              </div>
-
-                              <h5 class="task__title">
-                                  Наименование задачи
-                              </h5>
-                              <ul class="task__tags">
-                                  <li>
-                              <span class="tag tag--blue">
-                                  Тег задачи
-                              </span>
-                                  </li>
-                              </ul>
-                          </div>
-                      </div>
+                    <div
+                        v-for="task in columnTasks[column.id]"
+                        :key="column.id"
+                        class="column__task"
+                    >
+                        <div class="task">
+                            <div
+                                v-if="task.user"
+                                class="task__user"
+                            >
+                                <div class="task__avatar">
+                                    <img
+                                        :src="getImage(task.user.avatar)"
+                                        :alt="task.user.name"
+                                        width="20"
+                                        height="20"
+                                    />
+                                </div>
+                                {{ task.user.name }}
+                            </div>
+                            
+                            <div class="task__statuses">
+                                <span
+                                    v-if="task.status"
+                                    class="task__status"
+                                    :class="`task__status--${task.status}`"
+                                />
+                                <span
+                                    v-if="task.timeStatus"
+                                    class="task__status"
+                                    :class="`task__status--${task.timeStatus}`"
+                                />
+                            </div>
+                            
+                            <h5
+                                class="task__title"
+                                :class="{'task__title--first': !task.user}"
+                            >
+                            {{ task.title }}
+                            </h5>
+                            <ul
+                                v-if="task.tags && task.tags.length"
+                                class="task__tags"
+                            >
+                                <li
+                                    v-for="(tag, index) in task.tags"
+                                    :key="index"
+                                >
+                                    <span class="tag tag--blue">
+                                        {{ tag }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                   </div>
               </div>
           </div>
 
           <!--      Пустая доска-->
-          <p class="desk__emptiness">
+          <p 
+            v-else
+            class="desk__emptiness">
               Пока нет ни одной колонки
           </p>
       </section>
   </main>
 </template>
+
+<script setup>
+import columns from '../mocks/columns.json'
+import users from '../mocks/users.json'
+import rawTasks from '../mocks/tasks.json'
+import {normalizeTask, getTagsArrayFromString} from '../common/helpers'
+import { STATUSES } from '../common/constants'
+
+const normalizedTasks = rawTasks.map(task => normalizeTask(task))
+
+const columnTasks = normalizedTasks
+	// Фильтруем задачи, которые прикреплены к колонке
+	.filter(({ columnId }) => columnId)
+	.reduce((accumulator, task) => {
+		task.tags = getTagsArrayFromString(task.tags)
+		if (accumulator[task.columnId]) {
+			accumulator[task.columnId] = [...accumulator[task.columnId], task]
+		} else {
+			accumulator[task.columnId] = [task]
+		}
+		return accumulator
+	}, {})
+
+const getImage = image => {
+// https://vitejs.dev/guide/assets.html#new-url-url-import-meta-url
+return new URL(`../assets/img/${image}`, import.meta.url).href
+}
+
+</script>
